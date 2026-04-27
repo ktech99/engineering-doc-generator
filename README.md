@@ -2,29 +2,26 @@
 
 > A Claude AI skill that generates polished, dark-themed HTML explainer documents for any engineering artifact.
 
-![Demo screenshot](demo.png)
+![Demo screenshot](demo-hero-arch.png)
 
 ---
 
 ## Screenshots
 
-### PR Explainer (original demo)
-![PR explainer demo](demo.png)
+### System Architecture — Microservices Overview
+A stunning full-width architecture diagram with gradient-filled service nodes, data flow arrows, 6 stat tiles, and component highlight cards. 1400px wide, zero sidebar.
 
-### Repo Architecture
-A full microservices architecture explainer with SVG diagrams, component cards, API surface table, data model, and annotated file tree.
+![Architecture hero](demo-hero-arch.png)
 
-![Architecture demo](demo-architecture.png)
+### Pull Request Explainer — feat/auth-refactor
+Wide PR explainer with stat tiles (+847/−312 lines, 98% coverage), an animated auth flow sequence diagram, before/after comparison table, and color-coded change callouts.
 
-### Post-mortem / Incident Report
-An incident report with a timeline SVG, root cause trace cards, action item list, and blameless Q&A.
+![PR explainer hero](demo-hero-pr.png)
 
-![Post-mortem demo](demo-post-mortem.png)
+### Database Migration Plan — PostgreSQL → Aurora
+Migration progress page with phase chips, a side-by-side before/after infrastructure SVG, 67% progress bar, stat tiles, and a 3-phase breakdown.
 
-### Database Migration Plan
-A before/after comparison diagram, 9-step migration plan with circular numbered steps, table inventory, risk callouts, and rollback runbook.
-
-![Migration plan demo](demo-migration.png)
+![Migration plan hero](demo-hero-migration.png)
 
 ---
 
