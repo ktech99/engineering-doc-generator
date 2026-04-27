@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NexaCommerce — Repo Architecture</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #020617;
+      --surface:   #0f172a;
+      --surface-2: #0b1220;
+      --surface-3: #0a1224;
+      --border:    #1e293b;
+      --text:      #e2e8f0;
+      --text-2:    #cbd5e1;
+      --muted:     #64748b;
+      --emerald:   #34d399;
+      --amber:     #fbbf24;
+      --violet:    #a78bfa;
+      --cyan:      #22d3ee;
+      --rose:      #fb7185;
+      --orange:    #fb923c;
+      --slate:     #94a3b8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; min-height: 100vh; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 252px; min-width: 252px; background: var(--surface-3);
+      border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh;
+      overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 2rem;
+    }
+    .brand {
+      display: flex; align-items: flex-start; gap: 0.75rem;
+      padding: 1.5rem 1.25rem 1.25rem; border-bottom: 1px solid var(--border);
+    }
+    .pulse-dot {
+      width: 9px; height: 9px; background: var(--emerald); border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+      box-shadow: 0 0 0 3px rgba(52,211,153,0.15);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(52,211,153,0.15); } 50% { box-shadow: 0 0 0 6px rgba(52,211,153,0.05); } }
+    .brand-title { font-size: 0.88rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .brand-sub { font-size: 0.7rem; font-weight: 500; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .nav-group { padding: 1rem 0; }
+    .nav-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 1.25rem 0.5rem; }
+    .nav-link {
+      display: block; padding: 0.42rem 1.25rem; font-size: 0.8rem; font-weight: 500;
+      color: var(--text-2); text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent;
+    }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-link.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(34,211,238,0.06); }
+
+    /* CONTENT */
+    .content { flex: 1; padding: 2.5rem 3rem; max-width: 980px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    h1 { font-size: 1.95rem; font-weight: 800; color: var(--text); margin-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 2rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    p { font-size: 0.88rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.75rem; }
+    a { color: var(--cyan); }
+
+    .section-header { margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+    .section-header p { font-size: 0.9rem; color: var(--text-2); margin-top: 0.5rem; margin-bottom: 0; }
+
+    /* STAT GRID */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem 1rem; text-align: center; }
+    .stat-val { display: block; font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--cyan); line-height: 1; }
+    .stat-lbl { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
+
+    /* CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem; margin-bottom: 1rem; }
+    .card-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card-desc { font-size: 0.82rem; line-height: 1.65; color: var(--text-2); }
+
+    .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+
+    /* CALLOUT */
+    .callout { border-radius: 0.65rem; padding: 1rem 1.25rem; margin: 1rem 0; border-left: 3px solid; }
+    .callout p { margin: 0; font-size: 0.84rem; }
+    .callout.emerald { background: rgba(52,211,153,0.06); border-color: var(--emerald); }
+    .callout.cyan    { background: rgba(34,211,238,0.06); border-color: var(--cyan); }
+    .callout.amber   { background: rgba(251,191,36,0.06); border-color: var(--amber); }
+    .callout.rose    { background: rgba(251,113,133,0.06); border-color: var(--rose); }
+    .callout.violet  { background: rgba(167,139,250,0.06); border-color: var(--violet); }
+
+    /* CHIP */
+    .chip { display: inline-block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 999px; margin-right: 0.5rem; }
+    .chip.emerald { background: rgba(52,211,153,0.12); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+    .chip.cyan    { background: rgba(34,211,238,0.12); color: var(--cyan);    border: 1px solid rgba(34,211,238,0.3); }
+    .chip.amber   { background: rgba(251,191,36,0.12);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.3); }
+    .chip.rose    { background: rgba(251,113,133,0.12); color: var(--rose);   border: 1px solid rgba(251,113,133,0.3); }
+    .chip.violet  { background: rgba(167,139,250,0.12); color: var(--violet); border: 1px solid rgba(167,139,250,0.3); }
+    .chip.orange  { background: rgba(251,146,60,0.12);  color: var(--orange); border: 1px solid rgba(251,146,60,0.3); }
+
+    /* DIAGRAM */
+    .diagram { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.5rem; margin: 1.5rem 0; overflow-x: auto; }
+    .caption { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: -0.75rem; margin-bottom: 0.75rem; font-style: italic; }
+
+    /* CODE */
+    pre.code {
+      background: #0a0f1c; border: 1px solid var(--border); border-radius: 0.65rem;
+      padding: 1.25rem; overflow-x: auto; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem; line-height: 1.7; margin: 1rem 0;
+    }
+    .kw  { color: var(--violet); }
+    .str { color: var(--emerald); }
+    .com { color: var(--muted); }
+    .num { color: var(--amber); }
+    .fn  { color: var(--cyan); }
+    .typ { color: var(--orange); }
+
+    /* TREE */
+    pre.tree {
+      background: #0a0f1c; border: 1px solid var(--border); border-radius: 0.65rem;
+      padding: 1.25rem; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem;
+      line-height: 1.8; overflow-x: auto; margin: 1rem 0;
+    }
+    .dir  { color: var(--cyan); }
+    .file { color: var(--text-2); }
+    .com  { color: var(--muted); }
+
+    /* STEPS */
+    ol.steps { list-style: none; counter-reset: step-counter; margin: 1rem 0; }
+    ol.steps li { counter-increment: step-counter; display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 1rem; }
+    ol.steps li::before {
+      content: counter(step-counter); min-width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(34,211,238,0.12); border: 1.5px solid var(--cyan); color: var(--cyan);
+      font-size: 0.75rem; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+    }
+    ol.steps li p { margin: 0; font-size: 0.85rem; }
+
+    /* FOOTER */
+    footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    /* HIGHLIGHT CARDS */
+    .highlight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .highlight-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem; }
+    .highlight-card .icon { font-size: 1.5rem; margin-bottom: 0.6rem; }
+    .highlight-card h4 { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+    .highlight-card p { font-size: 0.8rem; color: var(--muted); margin: 0; }
+
+    .tag-row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.75rem; }
+
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.83rem; }
+    th { background: var(--surface); border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+    td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; color: var(--text-2); vertical-align: top; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .section { display: block !important; }
+      .content { margin-left: 0; padding: 1.5rem; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .card-grid { grid-template-columns: 1fr; }
+      .highlight-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="pulse-dot"></span>
+      <div>
+        <div class="brand-title">NexaCommerce</div>
+        <div class="brand-sub">Repo Architecture</div>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <a href="#tldr" class="nav-link active">TL;DR</a>
+      <a href="#bigpicture" class="nav-link">Big Picture</a>
+      <a href="#filetree" class="nav-link">File Tree</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Architecture</div>
+      <a href="#components" class="nav-link">Components</a>
+      <a href="#api" class="nav-link">API Surface</a>
+      <a href="#datamodel" class="nav-link">Data Model</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Operational</div>
+      <a href="#runbook" class="nav-link">Runbook</a>
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <!-- TL;DR -->
+    <section id="tldr" class="section active">
+      <div class="section-header">
+        <h1>NexaCommerce</h1>
+        <p>Microservices e-commerce platform — Node.js API Gateway + Go domain services + PostgreSQL + Redis. Five independently deployable services communicating over gRPC with an event bus for async workflows.</p>
+      </div>
+
+      <!-- source: wc -l $(find . -name "*.ts" -o -name "*.go") | tail -1 -->
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-val">5</span><span class="stat-lbl">Services</span></div>
+        <div class="stat"><span class="stat-val">3</span><span class="stat-lbl">Databases</span></div>
+        <div class="stat"><span class="stat-val">12</span><span class="stat-lbl">API Endpoints</span></div>
+        <div class="stat"><span class="stat-val">47k</span><span class="stat-lbl">Lines of Code</span></div>
+      </div>
+
+      <div class="highlight-grid">
+        <div class="highlight-card">
+          <div class="icon">🚪</div>
+          <h4>API Gateway</h4>
+          <p>Single ingress point. JWT auth, rate limiting, request routing to domain services.</p>
+        </div>
+        <div class="highlight-card">
+          <div class="icon">⚡</div>
+          <h4>Event-Driven Core</h4>
+          <p>NATS JetStream for async workflows. Order placed → payment → fulfillment pipeline.</p>
+        </div>
+        <div class="highlight-card">
+          <div class="icon">🔒</div>
+          <h4>Zero-Trust Auth</h4>
+          <p>Auth Service issues short-lived JWTs. Services validate locally — no central auth hop.</p>
+        </div>
+      </div>
+
+      <div class="callout cyan">
+        <span class="chip cyan">Info</span>
+        <p>All services are containerized and deployed via Helm. Each service owns its own PostgreSQL schema; no cross-service DB queries.</p>
+      </div>
+    </section>
+
+    <!-- BIG PICTURE -->
+    <section id="bigpicture" class="section">
+      <div class="section-header">
+        <h1>Big Picture</h1>
+        <p>System-level architecture: how a request flows from the client through the API Gateway to domain services and the async event pipeline.</p>
+      </div>
+
+      <div class="diagram">
+        <svg viewBox="0 0 820 460" preserveAspectRatio="xMidYMid meet" width="100%" style="max-height:460px;" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#22d3ee" opacity="0.7"/>
+            </marker>
+            <marker id="arr-e" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#34d399" opacity="0.7"/>
+            </marker>
+            <marker id="arr-v" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#a78bfa" opacity="0.7"/>
+            </marker>
+          </defs>
+
+          <!-- Client -->
+          <rect x="20" y="190" width="110" height="50" rx="8" fill="rgba(34,211,238,0.08)" stroke="rgba(34,211,238,0.45)" stroke-width="1.5"/>
+          <text x="75" y="212" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#22d3ee">Client</text>
+          <text x="75" y="228" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Web / Mobile</text>
+
+          <!-- Arrow client → gateway -->
+          <line x1="130" y1="215" x2="178" y2="215" stroke="#22d3ee" stroke-width="1.5" opacity="0.6" marker-end="url(#arr)"/>
+
+          <!-- API Gateway -->
+          <rect x="180" y="165" width="130" height="100" rx="10" fill="rgba(167,139,250,0.08)" stroke="rgba(167,139,250,0.5)" stroke-width="2"/>
+          <text x="245" y="205" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#a78bfa">API Gateway</text>
+          <text x="245" y="222" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Node.js / Express</text>
+          <text x="245" y="238" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">JWT · Rate Limit</text>
+
+          <!-- Gateway → Auth -->
+          <line x1="310" y1="195" x2="388" y2="135" stroke="#22d3ee" stroke-width="1.5" opacity="0.6" marker-end="url(#arr)"/>
+          <!-- Gateway → Order -->
+          <line x1="310" y1="215" x2="388" y2="215" stroke="#22d3ee" stroke-width="1.5" opacity="0.6" marker-end="url(#arr)"/>
+          <!-- Gateway → Payment -->
+          <line x1="310" y1="235" x2="388" y2="305" stroke="#22d3ee" stroke-width="1.5" opacity="0.6" marker-end="url(#arr)"/>
+
+          <!-- Auth Service -->
+          <rect x="390" y="90" width="130" height="70" rx="8" fill="rgba(251,191,36,0.08)" stroke="rgba(251,191,36,0.45)" stroke-width="1.5"/>
+          <text x="455" y="122" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#fbbf24">Auth Service</text>
+          <text x="455" y="140" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Go · JWT issuer</text>
+
+          <!-- Order Service -->
+          <rect x="390" y="185" width="130" height="70" rx="8" fill="rgba(52,211,153,0.08)" stroke="rgba(52,211,153,0.45)" stroke-width="1.5"/>
+          <text x="455" y="215" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#34d399">Order Service</text>
+          <text x="455" y="233" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Go · PostgreSQL</text>
+
+          <!-- Payment Service -->
+          <rect x="390" y="275" width="130" height="70" rx="8" fill="rgba(251,113,133,0.08)" stroke="rgba(251,113,133,0.45)" stroke-width="1.5"/>
+          <text x="455" y="305" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#fb7185">Payment Service</text>
+          <text x="455" y="323" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Go · Stripe API</text>
+
+          <!-- NATS -->
+          <rect x="580" y="185" width="130" height="70" rx="8" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.3)" stroke-width="1.5" stroke-dasharray="5,3"/>
+          <text x="645" y="215" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#22d3ee">Event Bus</text>
+          <text x="645" y="233" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">NATS JetStream</text>
+
+          <!-- Order → NATS -->
+          <line x1="520" y1="220" x2="578" y2="220" stroke="#34d399" stroke-width="1.5" opacity="0.6" marker-end="url(#arr-e)"/>
+          <!-- Payment → NATS -->
+          <line x1="520" y1="310" x2="645" y2="258" stroke="#34d399" stroke-width="1.5" opacity="0.6" marker-end="url(#arr-e)"/>
+
+          <!-- Databases -->
+          <rect x="580" y="370" width="130" height="60" rx="8" fill="rgba(251,146,60,0.06)" stroke="rgba(251,146,60,0.35)" stroke-width="1.5"/>
+          <text x="645" y="397" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#fb923c">PostgreSQL</text>
+          <text x="645" y="415" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">3 schemas · RDS</text>
+
+          <!-- Services → DB -->
+          <line x1="645" y1="258" x2="645" y2="368" stroke="#a78bfa" stroke-width="1.5" opacity="0.4" stroke-dasharray="4,3" marker-end="url(#arr-v)"/>
+
+          <!-- Auth → Redis label -->
+          <rect x="580" y="70" width="130" height="60" rx="8" fill="rgba(167,139,250,0.06)" stroke="rgba(167,139,250,0.3)" stroke-width="1.5"/>
+          <text x="645" y="97" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="#a78bfa">Redis</text>
+          <text x="645" y="115" text-anchor="middle" font-family="Inter" font-size="10" fill="#64748b">Sessions · Cache</text>
+          <line x1="520" y1="125" x2="578" y2="100" stroke="#a78bfa" stroke-width="1.5" opacity="0.5" marker-end="url(#arr-v)"/>
+
+          <!-- Legend -->
+          <text x="20" y="420" font-family="Inter" font-size="10" fill="#64748b">── gRPC / HTTP   - - Async / Event   ── DB write</text>
+        </svg>
+      </div>
+      <p class="caption">Figure 1 — NexaCommerce service topology. Solid lines = synchronous calls; dashed = async events.</p>
+
+      <div class="callout violet">
+        <span class="chip violet">Design choice</span>
+        <p>Each service owns its schema. Cross-service data is accessed through events or explicit API calls — never shared table joins. This lets services scale and deploy independently.</p>
+      </div>
+    </section>
+
+    <!-- FILE TREE -->
+    <section id="filetree" class="section">
+      <div class="section-header">
+        <h1>File Tree</h1>
+        <p>Repo layout. Top-level directories map 1:1 to services. Shared utilities live in <code style="font-family:'JetBrains Mono';color:var(--cyan);font-size:0.85em">packages/</code>.</p>
+      </div>
+
+      <pre class="tree">
+<span class="dir">nexacommerce/</span>
+├── <span class="dir">services/</span>
+│   ├── <span class="dir">api-gateway/</span>          <span class="com"># Node.js ingress, JWT validation, routing</span>
+│   │   ├── <span class="dir">src/</span>
+│   │   │   ├── <span class="file">middleware/auth.ts</span>
+│   │   │   ├── <span class="file">middleware/ratelimit.ts</span>
+│   │   │   └── <span class="file">routes/index.ts</span>
+│   │   └── <span class="file">Dockerfile</span>
+│   ├── <span class="dir">auth-service/</span>             <span class="com"># Go, JWT issuer, Redis session store</span>
+│   │   ├── <span class="dir">internal/</span>
+│   │   │   ├── <span class="file">token/jwt.go</span>
+│   │   │   └── <span class="file">session/redis.go</span>
+│   │   └── <span class="file">main.go</span>
+│   ├── <span class="dir">order-service/</span>            <span class="com"># Go, order lifecycle, publishes OrderPlaced</span>
+│   │   ├── <span class="dir">internal/</span>
+│   │   │   ├── <span class="file">domain/order.go</span>
+│   │   │   ├── <span class="file">repo/postgres.go</span>
+│   │   │   └── <span class="file">events/publisher.go</span>
+│   │   └── <span class="file">main.go</span>
+│   ├── <span class="dir">payment-service/</span>          <span class="com"># Go, Stripe integration, emits PaymentSettled</span>
+│   │   ├── <span class="dir">internal/</span>
+│   │   │   ├── <span class="file">stripe/client.go</span>
+│   │   │   └── <span class="file">events/consumer.go</span>
+│   │   └── <span class="file">main.go</span>
+│   └── <span class="dir">fulfillment-service/</span>      <span class="com"># Go, warehouse integration, ships orders</span>
+├── <span class="dir">packages/</span>
+│   ├── <span class="dir">proto/</span>                    <span class="com"># Shared protobuf definitions</span>
+│   └── <span class="dir">events/</span>                   <span class="com"># Event schema types (CloudEvents)</span>
+├── <span class="dir">infra/</span>
+│   ├── <span class="dir">helm/</span>                     <span class="com"># Helm charts per service</span>
+│   └── <span class="dir">terraform/</span>                <span class="com"># RDS, ElastiCache, EKS cluster</span>
+├── <span class="dir">scripts/</span>
+│   ├── <span class="file">seed-db.sh</span>
+│   └── <span class="file">run-local.sh</span>
+└── <span class="file">docker-compose.yml</span>         <span class="com"># Local dev stack</span>
+</pre>
+
+      <div class="callout emerald">
+        <span class="chip emerald">Convention</span>
+        <p>Services import nothing from each other's <code style="font-family:'JetBrains Mono';font-size:0.9em;color:var(--cyan)">internal/</code> packages. Cross-boundary contracts are defined only in <code style="font-family:'JetBrains Mono';font-size:0.9em;color:var(--cyan)">packages/proto</code> and <code style="font-family:'JetBrains Mono';font-size:0.9em;color:var(--cyan)">packages/events</code>.</p>
+      </div>
+    </section>
+
+    <!-- COMPONENTS -->
+    <section id="components" class="section">
+      <div class="section-header">
+        <h1>Components</h1>
+        <p>What each service does, why it exists, and where to find it.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="chip violet">Gateway</span> API Gateway</div>
+        <div class="card-desc">Single HTTP/2 ingress for all client traffic. Validates JWTs (local JWKS), enforces rate limits (Redis token bucket), and proxies requests to domain services via gRPC. Does NOT contain business logic — it's a dumb router with auth enforcement.</div>
+        <div class="tag-row">
+          <span class="chip cyan">Node.js</span><span class="chip cyan">Express</span><span class="chip amber">JWT</span><span class="chip amber">Rate Limit</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="chip amber">Auth</span> Auth Service</div>
+        <div class="card-desc">Issues and rotates JWTs using RS256. Maintains a JWKS endpoint for gateways to pull public keys. Sessions stored in Redis with a 24h TTL. Refresh token rotation prevents replay. OAuth2 PKCE flow for third-party logins.</div>
+        <div class="tag-row">
+          <span class="chip emerald">Go</span><span class="chip amber">RS256 JWT</span><span class="chip violet">Redis</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="chip emerald">Orders</span> Order Service</div>
+        <div class="card-desc">Owns the order lifecycle — draft → confirmed → paid → shipped → delivered. Each state transition is validated, persisted, and published as a CloudEvent to NATS JetStream. Idempotent order creation via client-generated UUIDs.</div>
+        <div class="tag-row">
+          <span class="chip emerald">Go</span><span class="chip orange">PostgreSQL</span><span class="chip cyan">NATS</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="chip rose">Payments</span> Payment Service</div>
+        <div class="card-desc">Consumes <code style="font-family:'JetBrains Mono';color:var(--cyan)">OrderPlaced</code> events and initiates Stripe PaymentIntents. Emits <code style="font-family:'JetBrains Mono';color:var(--cyan)">PaymentSettled</code> or <code style="font-family:'JetBrains Mono';color:var(--cyan)">PaymentFailed</code>. Handles Stripe webhook retries with exactly-once guarantees using a dedupe table.</div>
+        <div class="tag-row">
+          <span class="chip emerald">Go</span><span class="chip orange">Stripe API</span><span class="chip cyan">NATS</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="chip cyan">Fulfillment</span> Fulfillment Service</div>
+        <div class="card-desc">Listens for <code style="font-family:'JetBrains Mono';color:var(--cyan)">PaymentSettled</code>, creates pick-pack-ship jobs, and calls the warehouse WMS via REST. Exposes a webhook endpoint for carrier tracking updates. Owns shipment and tracking data.</div>
+        <div class="tag-row">
+          <span class="chip emerald">Go</span><span class="chip amber">WMS REST</span><span class="chip cyan">NATS</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- API SURFACE -->
+    <section id="api" class="section">
+      <div class="section-header">
+        <h1>API Surface</h1>
+        <p>Public REST endpoints exposed by the API Gateway. All paths require a Bearer JWT unless marked <span class="chip amber">public</span>.</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>Method</th><th>Path</th><th>Service</th><th>Description</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/auth/login</code></td><td>Auth</td><td><span class="chip amber">public</span> Exchange credentials for JWT + refresh token</td></tr>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/auth/refresh</code></td><td>Auth</td><td><span class="chip amber">public</span> Rotate refresh token, issue new JWT</td></tr>
+          <tr><td><span class="chip cyan">GET</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/orders</code></td><td>Order</td><td>List orders for authenticated user, paginated</td></tr>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/orders</code></td><td>Order</td><td>Create order (idempotency-key header required)</td></tr>
+          <tr><td><span class="chip cyan">GET</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/orders/:id</code></td><td>Order</td><td>Fetch order by UUID</td></tr>
+          <tr><td><span class="chip amber">PATCH</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/orders/:id</code></td><td>Order</td><td>Update order (pre-confirm only)</td></tr>
+          <tr><td><span class="chip rose">DELETE</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/orders/:id</code></td><td>Order</td><td>Cancel order (pre-payment only)</td></tr>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/payments/intent</code></td><td>Payment</td><td>Create Stripe PaymentIntent, return client secret</td></tr>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/payments/webhook</code></td><td>Payment</td><td><span class="chip amber">public</span> Stripe webhook receiver</td></tr>
+          <tr><td><span class="chip cyan">GET</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/shipments/:orderId</code></td><td>Fulfillment</td><td>Get shipment + tracking info for an order</td></tr>
+          <tr><td><span class="chip emerald">POST</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/shipments/webhook</code></td><td>Fulfillment</td><td><span class="chip amber">public</span> Carrier tracking webhook</td></tr>
+          <tr><td><span class="chip cyan">GET</span></td><td><code style="font-family:'JetBrains Mono';font-size:0.85em">/.well-known/jwks.json</code></td><td>Auth</td><td><span class="chip amber">public</span> Public key set for JWT verification</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Order interface (TypeScript)</h2>
+      <pre class="code">
+<span class="com">// packages/proto/order.ts — shared contract between gateway and order-service</span>
+
+<span class="kw">export interface</span> <span class="typ">CreateOrderRequest</span> {
+  idempotencyKey: <span class="kw">string</span>;       <span class="com">// UUID v4, client-generated</span>
+  customerId:     <span class="kw">string</span>;       <span class="com">// from JWT sub claim</span>
+  items: <span class="typ">OrderItem</span>[];
+  shippingAddress: <span class="typ">Address</span>;
+  currency: <span class="str">"USD"</span> | <span class="str">"EUR"</span> | <span class="str">"GBP"</span>;
+}
+
+<span class="kw">export interface</span> <span class="typ">OrderItem</span> {
+  sku:       <span class="kw">string</span>;
+  quantity:  <span class="kw">number</span>;            <span class="com">// min: 1</span>
+  unitPrice: <span class="kw">number</span>;            <span class="com">// cents</span>
+}
+
+<span class="kw">export interface</span> <span class="typ">OrderResponse</span> {
+  id:        <span class="kw">string</span>;            <span class="com">// UUID</span>
+  status:    <span class="typ">OrderStatus</span>;
+  total:     <span class="kw">number</span>;            <span class="com">// cents</span>
+  createdAt: <span class="kw">string</span>;            <span class="com">// ISO 8601</span>
+  items:     <span class="typ">OrderItem</span>[];
+}
+
+<span class="kw">export type</span> <span class="typ">OrderStatus</span> =
+  | <span class="str">"draft"</span> | <span class="str">"confirmed"</span> | <span class="str">"paid"</span>
+  | <span class="str">"shipped"</span> | <span class="str">"delivered"</span> | <span class="str">"cancelled"</span>;
+</pre>
+    </section>
+
+    <!-- DATA MODEL -->
+    <section id="datamodel" class="section">
+      <div class="section-header">
+        <h1>Data Model</h1>
+        <p>Three PostgreSQL schemas — one per owning service. No foreign keys across schemas.</p>
+      </div>
+
+      <div class="card-grid">
+        <div class="card">
+          <div class="card-title"><span class="chip emerald">orders</span> schema</div>
+          <div class="card-desc">
+            <strong style="color:var(--text)">orders</strong> — id (UUID PK), customer_id, status, currency, total_cents, idempotency_key, created_at, updated_at<br><br>
+            <strong style="color:var(--text)">order_items</strong> — id, order_id (FK), sku, quantity, unit_price_cents<br><br>
+            <strong style="color:var(--text)">order_events</strong> — append-only status transition log with actor + metadata
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="chip rose">payments</span> schema</div>
+          <div class="card-desc">
+            <strong style="color:var(--text)">payments</strong> — id, order_id, stripe_payment_intent_id, amount_cents, status, settled_at<br><br>
+            <strong style="color:var(--text)">payment_events</strong> — Stripe webhook events (deduped by event_id)<br><br>
+            <strong style="color:var(--text)">refunds</strong> — refund_id, payment_id, amount_cents, reason, created_at
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title"><span class="chip cyan">fulfillment</span> schema</div>
+          <div class="card-desc">
+            <strong style="color:var(--text)">shipments</strong> — id, order_id, wms_job_id, carrier, tracking_number, status<br><br>
+            <strong style="color:var(--text)">tracking_events</strong> — carrier webhook events, timestamped location/status updates<br><br>
+            <strong style="color:var(--text)">delivery_proofs</strong> — image URLs, signature blobs, delivered_at
+          </div>
+        </div>
+      </div>
+
+      <div class="callout amber">
+        <span class="chip amber">Consistency model</span>
+        <p>Cross-service data consistency is eventual — driven by NATS events. A <code style="font-family:'JetBrains Mono';color:var(--cyan)">PaymentSettled</code> event may arrive 50–200ms after the Stripe webhook. Services must tolerate brief inconsistency windows and implement idempotent consumers.</p>
+      </div>
+    </section>
+
+    <!-- RUNBOOK -->
+    <section id="runbook" class="section">
+      <div class="section-header">
+        <h1>Runbook</h1>
+        <p>How to run locally, promote to staging, and roll back a bad deploy.</p>
+      </div>
+
+      <h2>Local dev</h2>
+      <ol class="steps">
+        <li><p>Clone repo and install deps: <code style="font-family:'JetBrains Mono';color:var(--cyan)">git clone git@github.com:nexacommerce/platform.git && cd platform</code></p></li>
+        <li><p>Start infra: <code style="font-family:'JetBrains Mono';color:var(--cyan)">docker compose up -d</code> — starts Postgres, Redis, NATS</p></li>
+        <li><p>Seed databases: <code style="font-family:'JetBrains Mono';color:var(--cyan)">./scripts/seed-db.sh</code></p></li>
+        <li><p>Start all services: <code style="font-family:'JetBrains Mono';color:var(--cyan)">./scripts/run-local.sh</code> — watches for changes, auto-restarts</p></li>
+        <li><p>Hit the gateway at <code style="font-family:'JetBrains Mono';color:var(--cyan)">http://localhost:3000</code></p></li>
+      </ol>
+
+      <h2>Rollback</h2>
+      <div class="callout rose">
+        <span class="chip rose">Rollback</span>
+        <p>Each service is deployed independently. To roll back a single service: <code style="font-family:'JetBrains Mono';color:var(--cyan)">helm rollback &lt;service-name&gt; -n production</code>. DB migrations are backward-compatible — old code runs against new schema safely.</p>
+      </div>
+    </section>
+
+    <footer>
+      <span>NexaCommerce · v2.4.1 · Architecture Doc · Generated 2026-04-27</span>
+    </footer>
+  </main>
+
+  <script>
+    const links = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('.section');
+
+    function activate(hash) {
+      const id = (hash || '').replace('#', '') || 'tldr';
+      sections.forEach(s => s.classList.toggle('active', s.id === id));
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+
+    window.addEventListener('hashchange', () => activate(location.hash));
+    activate(location.hash);
+  </script>
+</body>
+</html>

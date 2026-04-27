@@ -6,6 +6,28 @@
 
 ---
 
+## Screenshots
+
+### PR Explainer (original demo)
+![PR explainer demo](demo.png)
+
+### Repo Architecture
+A full microservices architecture explainer with SVG diagrams, component cards, API surface table, data model, and annotated file tree.
+
+![Architecture demo](demo-architecture.png)
+
+### Post-mortem / Incident Report
+An incident report with a timeline SVG, root cause trace cards, action item list, and blameless Q&A.
+
+![Post-mortem demo](demo-post-mortem.png)
+
+### Database Migration Plan
+A before/after comparison diagram, 9-step migration plan with circular numbered steps, table inventory, risk callouts, and rollback runbook.
+
+![Migration plan demo](demo-migration.png)
+
+---
+
 ## What it produces
 
 A **single self-contained HTML file** — not a dashboard, not a wiki page, but a document-first explainer that works for both engineers and non-engineers. Features:

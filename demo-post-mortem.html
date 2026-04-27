@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INC-2847 Post-mortem — Engineering Doc</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:        #020617;
+      --surface:   #0f172a;
+      --surface-2: #0b1220;
+      --surface-3: #0a1224;
+      --border:    #1e293b;
+      --text:      #e2e8f0;
+      --text-2:    #cbd5e1;
+      --muted:     #64748b;
+      --emerald:   #34d399;
+      --amber:     #fbbf24;
+      --violet:    #a78bfa;
+      --cyan:      #22d3ee;
+      --rose:      #fb7185;
+      --orange:    #fb923c;
+      --slate:     #94a3b8;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 252px; min-width: 252px; background: var(--surface-3);
+      border-right: 1px solid var(--border); position: sticky; top: 0; height: 100vh;
+      overflow-y: auto; display: flex; flex-direction: column; padding-bottom: 2rem;
+    }
+    .brand { display: flex; align-items: flex-start; gap: 0.75rem; padding: 1.5rem 1.25rem 1.25rem; border-bottom: 1px solid var(--border); }
+    .pulse-dot { width: 9px; height: 9px; background: var(--rose); border-radius: 50%; margin-top: 5px; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(251,113,133,0.15); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 3px rgba(251,113,133,0.15); } 50% { box-shadow: 0 0 0 6px rgba(251,113,133,0.05); } }
+    .brand-title { font-size: 0.88rem; font-weight: 700; color: var(--text); line-height: 1.3; }
+    .brand-sub { font-size: 0.7rem; font-weight: 500; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .nav-group { padding: 1rem 0; }
+    .nav-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding: 0 1.25rem 0.5rem; }
+    .nav-link { display: block; padding: 0.42rem 1.25rem; font-size: 0.8rem; font-weight: 500; color: var(--text-2); text-decoration: none; transition: all 0.15s; border-left: 2px solid transparent; }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+    .nav-link.active { color: var(--cyan); border-left-color: var(--cyan); background: rgba(34,211,238,0.06); }
+
+    .content { flex: 1; padding: 2.5rem 3rem; max-width: 980px; }
+    .section { display: none; }
+    .section.active { display: block; }
+
+    h1 { font-size: 1.95rem; font-weight: 800; color: var(--text); margin-bottom: 0.5rem; }
+    h2 { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 2rem 0 1rem; }
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    p { font-size: 0.88rem; line-height: 1.75; color: var(--text-2); margin-bottom: 0.75rem; }
+
+    .section-header { margin-bottom: 1.75rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border); }
+    .section-header p { font-size: 0.9rem; color: var(--text-2); margin-top: 0.5rem; margin-bottom: 0; }
+
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem 1rem; text-align: center; }
+    .stat-val { display: block; font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--rose); line-height: 1; }
+    .stat-val.good { color: var(--emerald); }
+    .stat-val.warn { color: var(--amber); }
+    .stat-lbl { display: block; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-top: 0.5rem; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem; margin-bottom: 1rem; }
+    .card.rose-border { border-left: 3px solid var(--rose); }
+    .card.emerald-border { border-left: 3px solid var(--emerald); }
+    .card.amber-border { border-left: 3px solid var(--amber); }
+    .card-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .card-desc { font-size: 0.82rem; line-height: 1.65; color: var(--text-2); }
+
+    .callout { border-radius: 0.65rem; padding: 1rem 1.25rem; margin: 1rem 0; border-left: 3px solid; }
+    .callout p { margin: 0; font-size: 0.84rem; }
+    .callout.emerald { background: rgba(52,211,153,0.06); border-color: var(--emerald); }
+    .callout.cyan    { background: rgba(34,211,238,0.06); border-color: var(--cyan); }
+    .callout.amber   { background: rgba(251,191,36,0.06); border-color: var(--amber); }
+    .callout.rose    { background: rgba(251,113,133,0.06); border-color: var(--rose); }
+    .callout.violet  { background: rgba(167,139,250,0.06); border-color: var(--violet); }
+
+    .chip { display: inline-block; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 999px; margin-right: 0.4rem; }
+    .chip.emerald { background: rgba(52,211,153,0.12); color: var(--emerald); border: 1px solid rgba(52,211,153,0.3); }
+    .chip.cyan    { background: rgba(34,211,238,0.12); color: var(--cyan);    border: 1px solid rgba(34,211,238,0.3); }
+    .chip.amber   { background: rgba(251,191,36,0.12);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.3); }
+    .chip.rose    { background: rgba(251,113,133,0.12); color: var(--rose);   border: 1px solid rgba(251,113,133,0.3); }
+    .chip.violet  { background: rgba(167,139,250,0.12); color: var(--violet); border: 1px solid rgba(167,139,250,0.3); }
+
+    .diagram { background: var(--surface-2); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.5rem; margin: 1.5rem 0; overflow-x: auto; }
+    .caption { font-size: 0.75rem; color: var(--muted); text-align: center; margin-top: -0.75rem; margin-bottom: 0.75rem; font-style: italic; }
+
+    /* QA */
+    .qa-block { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem; margin-bottom: 1rem; }
+    .qa-q { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; color: var(--cyan); margin-bottom: 0.6rem; }
+    .qa-a { font-size: 0.84rem; color: var(--text-2); line-height: 1.7; }
+
+    /* Action items */
+    .action-item { display: flex; gap: 1rem; align-items: flex-start; padding: 0.85rem 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 0.5rem; margin-bottom: 0.65rem; }
+    .action-number { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700; color: var(--muted); min-width: 24px; padding-top: 1px; }
+    .action-text { font-size: 0.83rem; color: var(--text-2); line-height: 1.6; flex: 1; }
+    .action-owner { font-size: 0.72rem; font-weight: 600; color: var(--violet); white-space: nowrap; padding-top: 1px; }
+
+    .highlight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    .highlight-card { background: var(--surface); border: 1px solid var(--border); border-radius: 0.65rem; padding: 1.25rem; }
+    .highlight-card h4 { font-size: 0.85rem; font-weight: 700; color: var(--text); margin-bottom: 0.35rem; }
+    .highlight-card p { font-size: 0.8rem; color: var(--muted); margin: 0; }
+
+    footer { margin-top: 4rem; padding-top: 1.5rem; border-top: 1px solid var(--border); font-size: 0.75rem; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .section { display: block !important; }
+      .content { margin-left: 0; padding: 1.5rem; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .highlight-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="brand">
+      <span class="pulse-dot"></span>
+      <div>
+        <div class="brand-title">INC-2847</div>
+        <div class="brand-sub">Post-mortem</div>
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Overview</div>
+      <a href="#tldr" class="nav-link active">TL;DR</a>
+      <a href="#timeline" class="nav-link">Timeline</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Analysis</div>
+      <a href="#rootcause" class="nav-link">Root Causes</a>
+      <a href="#fixed" class="nav-link">What We Fixed</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">Follow-up</div>
+      <a href="#actions" class="nav-link">Action Items</a>
+      <a href="#qa" class="nav-link">Q&amp;A</a>
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <!-- TL;DR -->
+    <section id="tldr" class="section active">
+      <div class="section-header">
+        <h1>INC-2847 — Payment Service Outage</h1>
+        <p>On 2026-04-14 at 02:17 UTC, a misconfigured Redis connection pool exhausted all available connections during a traffic surge, causing the Payment Service to stop processing transactions. 4 hours of degraded checkout. No data lost. Fixed same day.</p>
+      </div>
+
+      <!-- source: PagerDuty incident timeline -->
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-val">4h</span><span class="stat-lbl">Downtime</span></div>
+        <div class="stat"><span class="stat-val warn">3</span><span class="stat-lbl">Root Causes</span></div>
+        <div class="stat"><span class="stat-val warn">12</span><span class="stat-lbl">Action Items</span></div>
+        <div class="stat"><span class="stat-val good">$0</span><span class="stat-lbl">Data Loss</span></div>
+      </div>
+
+      <div class="highlight-grid">
+        <div class="highlight-card">
+          <h4>🔥 What broke</h4>
+          <p>Redis connection pool hit its 50-connection limit. Payment Service goroutines deadlocked waiting for a free slot.</p>
+        </div>
+        <div class="highlight-card">
+          <h4>🕵️ How we found it</h4>
+          <p>P99 latency alert fired at 02:23 UTC. On-call engineer correlated Redis metrics within 8 minutes.</p>
+        </div>
+        <div class="highlight-card">
+          <h4>✅ How we fixed it</h4>
+          <p>Raised pool limit to 200, deployed connection timeout guard, added Redis pool saturation alert.</p>
+        </div>
+      </div>
+
+      <div class="callout rose">
+        <span class="chip rose">Severity</span>
+        <p>SEV-2: Partial outage. Checkout was unavailable for ~68% of users (those hitting affected pods). Auth and Order browsing remained functional throughout.</p>
+      </div>
+    </section>
+
+    <!-- TIMELINE -->
+    <section id="timeline" class="section">
+      <div class="section-header">
+        <h1>Incident Timeline</h1>
+        <p>All times UTC. Total incident window: 02:17 – 06:31 (4h 14m).</p>
+      </div>
+
+      <div class="diagram">
+        <svg viewBox="0 0 740 420" preserveAspectRatio="xMidYMid meet" width="100%" style="max-height:420px;" xmlns="http://www.w3.org/2000/svg">
+          <!-- Timeline spine -->
+          <line x1="120" y1="40" x2="120" y2="390" stroke="#1e293b" stroke-width="2"/>
+
+          <!-- Events -->
+          <!-- 02:17 -->
+          <circle cx="120" cy="65" r="8" fill="rgba(251,113,133,0.15)" stroke="#fb7185" stroke-width="2"/>
+          <text x="138" y="60" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#fb7185">02:17</text>
+          <text x="138" y="76" font-family="Inter" font-size="12" fill="#cbd5e1">Redis pool exhausted — Payment Service goroutines block</text>
+
+          <!-- 02:23 -->
+          <circle cx="120" cy="120" r="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="2"/>
+          <text x="138" y="115" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#fbbf24">02:23</text>
+          <text x="138" y="131" font-family="Inter" font-size="12" fill="#cbd5e1">P99 checkout latency alert fires (threshold: 2s, actual: 18s)</text>
+
+          <!-- 02:31 -->
+          <circle cx="120" cy="175" r="8" fill="rgba(251,191,36,0.12)" stroke="#fbbf24" stroke-width="2"/>
+          <text x="138" y="170" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#fbbf24">02:31</text>
+          <text x="138" y="186" font-family="Inter" font-size="12" fill="#cbd5e1">On-call paged. Begins investigation. Restarts pods (no effect)</text>
+
+          <!-- 03:10 -->
+          <circle cx="120" cy="230" r="8" fill="rgba(167,139,250,0.12)" stroke="#a78bfa" stroke-width="2"/>
+          <text x="138" y="225" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#a78bfa">03:10</text>
+          <text x="138" y="241" font-family="Inter" font-size="12" fill="#cbd5e1">Redis pool saturation identified as root cause. Incident bridge opened.</text>
+
+          <!-- 04:45 -->
+          <circle cx="120" cy="285" r="8" fill="rgba(34,211,238,0.12)" stroke="#22d3ee" stroke-width="2"/>
+          <text x="138" y="280" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#22d3ee">04:45</text>
+          <text x="138" y="296" font-family="Inter" font-size="12" fill="#cbd5e1">Fix deployed: pool limit 50→200. Connection timeout added (500ms)</text>
+
+          <!-- 06:31 -->
+          <circle cx="120" cy="345" r="8" fill="rgba(52,211,153,0.15)" stroke="#34d399" stroke-width="2"/>
+          <text x="138" y="340" font-family="'JetBrains Mono'" font-size="11" font-weight="600" fill="#34d399">06:31</text>
+          <text x="138" y="356" font-family="Inter" font-size="12" fill="#cbd5e1">All metrics normal. Incident resolved. Postmortem scheduled.</text>
+
+          <!-- Duration bracket -->
+          <line x1="90" y1="65" x2="90" y2="345" stroke="#1e293b" stroke-width="1" stroke-dasharray="3,3"/>
+          <text x="82" y="210" font-family="Inter" font-size="10" fill="#64748b" text-anchor="middle" transform="rotate(-90, 82, 210)">4h 14m</text>
+        </svg>
+      </div>
+      <p class="caption">Figure 1 — Incident timeline. Detection lag: 6 minutes. Time to root cause: 53 minutes. Time to fix: 2h 28m.</p>
+
+      <div class="callout violet">
+        <span class="chip violet">Note</span>
+        <p>The pod restarts at 02:31 masked the symptoms temporarily (goroutines released) but did not address the root cause. This extended MTTR by ~30 minutes.</p>
+      </div>
+    </section>
+
+    <!-- ROOT CAUSES -->
+    <section id="rootcause" class="section">
+      <div class="section-header">
+        <h1>Root Causes</h1>
+        <p>Three contributing factors — all required for the outage to occur. Any one fixed would have prevented it.</p>
+      </div>
+
+      <div class="card rose-border">
+        <div class="card-title"><span class="chip rose">RC-1</span> Redis pool size not scaled with pod count</div>
+        <div class="card-desc">The connection pool cap was set to 50 during initial development (single pod). When HPA scaled the Payment Service to 8 pods under load, total Redis connections hit 400 — 8× what ElastiCache was configured to handle. New connections were rejected; goroutines waited indefinitely.</div>
+      </div>
+
+      <div class="card rose-border">
+        <div class="card-title"><span class="chip rose">RC-2</span> No connection timeout on Redis client</div>
+        <div class="card-desc"><code style="font-family:'JetBrains Mono';color:var(--cyan)">redis.NewClient</code> was initialized without a <code style="font-family:'JetBrains Mono';color:var(--cyan)">DialTimeout</code> or <code style="font-family:'JetBrains Mono';color:var(--cyan)">ReadTimeout</code>. Goroutines acquiring a pool slot blocked forever — not for a bounded retry period. This caused cascading queue growth.</div>
+      </div>
+
+      <div class="card rose-border">
+        <div class="card-title"><span class="chip rose">RC-3</span> Missing saturation alert for Redis pool</div>
+        <div class="card-desc">We had latency alerts but no alert on Redis pool utilization. Pool hit 100% 6 minutes before the P99 alert fired. Earlier detection would have allowed a pre-emptive scale-out before user impact.</div>
+      </div>
+
+      <div class="callout amber">
+        <span class="chip amber">Contributing factor</span>
+        <p>A flash sale campaign launched at 01:55 UTC generated 3.2× normal traffic. The traffic spike was known but the Redis capacity implications were not analyzed in the pre-launch checklist.</p>
+      </div>
+    </section>
+
+    <!-- WHAT WE FIXED -->
+    <section id="fixed" class="section">
+      <div class="section-header">
+        <h1>What We Fixed</h1>
+        <p>Immediate mitigations deployed during the incident, plus follow-up hardening completed within 48 hours.</p>
+      </div>
+
+      <div class="callout emerald">
+        <span class="chip emerald">Done</span>
+        <p>All three root causes have been addressed. The fixes were deployed to production at 04:45 UTC on 2026-04-14 and validated through the following business day peak.</p>
+      </div>
+
+      <div class="card emerald-border">
+        <div class="card-title"><span class="chip emerald">Fix 1</span> Redis pool scaled to pod-aware limit</div>
+        <div class="card-desc">Pool size now set to <code style="font-family:'JetBrains Mono';color:var(--cyan)">maxPoolPerPod × maxPods = 25 × 10 = 250</code>. Value injected via env var <code style="font-family:'JetBrains Mono';color:var(--cyan)">REDIS_POOL_SIZE</code>, defaulting to 250. Helm values updated. ElastiCache max connections raised to 500 in Terraform.</div>
+      </div>
+
+      <div class="card emerald-border">
+        <div class="card-title"><span class="chip emerald">Fix 2</span> Connection and read timeouts enforced</div>
+        <div class="card-desc">Redis client now initialized with <code style="font-family:'JetBrains Mono';color:var(--cyan)">DialTimeout: 500ms</code>, <code style="font-family:'JetBrains Mono';color:var(--cyan)">ReadTimeout: 1s</code>, <code style="font-family:'JetBrains Mono';color:var(--cyan)">WriteTimeout: 1s</code>, and <code style="font-family:'JetBrains Mono';color:var(--cyan)">PoolTimeout: 2s</code>. Goroutines now fail fast and return a 503 rather than blocking indefinitely.</div>
+      </div>
+
+      <div class="card emerald-border">
+        <div class="card-title"><span class="chip emerald">Fix 3</span> Redis pool saturation alert added</div>
+        <div class="card-desc">New Datadog monitor: alert when <code style="font-family:'JetBrains Mono';color:var(--cyan)">redis.pool_hits / (redis.pool_hits + redis.pool_misses) &lt; 0.85</code> for 2 consecutive minutes. PagerDuty integration configured. Alert tested against incident replay — would have fired 6 minutes before user impact.</div>
+      </div>
+
+      <div class="card emerald-border">
+        <div class="card-title"><span class="chip emerald">Fix 4</span> Pre-launch capacity checklist updated</div>
+        <div class="card-desc">Added mandatory step: for any campaign expected to generate &gt;2× baseline traffic, run <code style="font-family:'JetBrains Mono';color:var(--cyan)">./scripts/capacity-check.sh</code> which validates Redis pool headroom, DB connection limits, and HPA max replica counts against projected peak load.</div>
+      </div>
+    </section>
+
+    <!-- ACTION ITEMS -->
+    <section id="actions" class="section">
+      <div class="section-header">
+        <h1>Action Items</h1>
+        <p>12 items tracked in Linear. Owner and target date listed. Status: 4 complete, 8 in progress.</p>
+      </div>
+
+      <div class="action-item">
+        <span class="action-number">#1</span>
+        <span class="action-text"><span class="chip emerald">Done</span> Raise Redis pool size and add PoolTimeout in payment-service Go client</span>
+        <span class="action-owner">@mko</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#2</span>
+        <span class="action-text"><span class="chip emerald">Done</span> Add Datadog alert on Redis pool saturation (&lt;85% hit rate)</span>
+        <span class="action-owner">@dchen</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#3</span>
+        <span class="action-text"><span class="chip emerald">Done</span> Update pre-launch checklist with capacity validation step</span>
+        <span class="action-owner">@rsingh</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#4</span>
+        <span class="action-text"><span class="chip emerald">Done</span> Raise ElastiCache max connections to 500 via Terraform</span>
+        <span class="action-owner">@mko</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#5</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Audit all services for missing Redis/DB connection timeouts — fix any found</span>
+        <span class="action-owner">@all-eng</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#6</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Add circuit breaker (failsafe) around Redis calls in payment-service</span>
+        <span class="action-owner">@dchen</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#7</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Write load test scenario simulating flash sale traffic pattern (3× baseline, 5 min ramp)</span>
+        <span class="action-owner">@ltran</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#8</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Add Runbook page for "Redis pool exhaustion" to on-call handbook</span>
+        <span class="action-owner">@rsingh</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#9</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Configure HPA scale-down cooldown to 10 min (prevent connection churn during spike recovery)</span>
+        <span class="action-owner">@mko</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#10</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Investigate Redis Cluster sharding for future capacity headroom (&gt;2k connections)</span>
+        <span class="action-owner">@dchen</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#11</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Instrument goroutine pool metrics in Payment Service (expose via /metrics)</span>
+        <span class="action-owner">@ltran</span>
+      </div>
+      <div class="action-item">
+        <span class="action-number">#12</span>
+        <span class="action-text"><span class="chip amber">In progress</span> Review customer impact — issue courtesy credit to affected users via CX team</span>
+        <span class="action-owner">@rsingh</span>
+      </div>
+    </section>
+
+    <!-- Q&A -->
+    <section id="qa" class="section">
+      <div class="section-header">
+        <h1>Q&amp;A</h1>
+        <p>Questions raised in the incident review and all-hands. Answered by the on-call team.</p>
+      </div>
+
+      <div class="qa-block">
+        <div class="qa-q">Q. Why didn't restarting the pods fix the problem?</div>
+        <div class="qa-a">Pod restarts temporarily released goroutines blocked on pool acquisition, giving a brief reprieve. But the root cause — pool cap too low for the current replica count — was unchanged. Within 2–3 minutes of restart, the same traffic pattern re-exhausted the pool.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="qa-q">Q. Was any order or payment data lost or duplicated?</div>
+        <div class="qa-a">No. Requests that failed returned HTTP 503. No partial writes occurred. The Payment Service's idempotency-key deduplication table was intact. Stripe confirmed zero duplicate charges. All queued NATS events were replayed cleanly after recovery.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="qa-q">Q. Why did it take 53 minutes to identify Redis as the root cause?</div>
+        <div class="qa-a">Initial investigation focused on pod health and Kubernetes events (the pod restarts muddied the signal). The Redis pool metric wasn't on the default incident dashboard. The fix: Redis pool utilization is now in the first panel engineers see during a Payment Service incident.</div>
+      </div>
+
+      <div class="qa-block">
+        <div class="qa-q">Q. How many customers were affected?</div>
+        <div class="qa-a">Approximately 14,200 unique sessions experienced checkout failures between 02:17 and 06:31 UTC. 3,400 users received an error mid-checkout. CX team is following up with courtesy credits.</div>
+      </div>
+
+      <div class="callout violet">
+        <span class="chip violet">Blameless</span>
+        <p>This post-mortem is blameless. The pool configuration was set during a period when the service ran at 1 replica — a perfectly reasonable decision at the time. The system lacked the observability needed to detect drift as scale increased. That's the process failure, not a person failure.</p>
+      </div>
+    </section>
+
+    <footer>
+      <span>INC-2847 · Payment Service Outage · 2026-04-14 · Authored by @rsingh · Generated 2026-04-27</span>
+    </footer>
+  </main>
+
+  <script>
+    const links = document.querySelectorAll('.nav-link');
+    const sections = document.querySelectorAll('.section');
+
+    function activate(hash) {
+      const id = (hash || '').replace('#', '') || 'tldr';
+      sections.forEach(s => s.classList.toggle('active', s.id === id));
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + id));
+    }
+
+    window.addEventListener('hashchange', () => activate(location.hash));
+    activate(location.hash);
+  </script>
+</body>
+</html>
