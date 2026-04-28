@@ -303,6 +303,8 @@ Before saving, verify:
 - **No invented numbers** — if you can't get a real stat, omit the tile
 - **No light theme** — always dark, always `#020617` background
 - **No external CSS frameworks** — Tailwind, Bootstrap, etc. are banned. Inline `<style>` only.
+- **No absolute file paths in hrefs or src attributes** — all navigation uses `#hash` anchors only. Never link to `/Users/...` or any local filesystem path. The file must be shareable to anyone and work when opened from any machine or location.
+- **No relative paths to external files** — the output is a single self-contained HTML file. All CSS, JS, and SVGs are inline. The only allowed external reference is the Google Fonts `<link>`.
 - **Not a status dashboard** — this is a document, not a metrics board. Use `visual-dashboard-generator` skill for dashboards.
 - **Don't pad section count** — a 50-line PR does not need 17 sections
 - **Don't write process commentary** — no "Now I'll generate…" filler in the HTML
